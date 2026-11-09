@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Geräte-Memory – Informatik 9</title>
+<style>
+  :root { --navy:#14284B; --orange:#F2A541; --light:#EAF1FA; --ok:#2E7D32; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; font-family: Arial, Helvetica, sans-serif; background:var(--light); color:var(--navy); }
+  header { background:var(--navy); color:#fff; padding:14px 18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+  header h1 { margin:0; font-size:1.45rem; }
+  header p { margin:2px 0 0; color:var(--orange); font-weight:bold; font-size:.95rem; }
+  .stat { background:rgba(255,255,255,.12); border-radius:10px; padding:8px 12px; font-weight:bold; }
+  main { max-width:980px; margin:0 auto; padding:14px; }
+  .intro { background:#fff; border-left:6px solid var(--orange); border-radius:10px; padding:10px 14px; margin-bottom:12px; }
+  .grid { display:grid; grid-template-columns:repeat(6, 1fr); gap:10px; }
+  @media (max-width:700px) { .grid { grid-template-columns:repeat(3, 1fr); } }
+  .card { position:relative; aspect-ratio: 3/4; perspective:800px; cursor:pointer; }
+  .inner { position:absolute; inset:0; transition:transform .45s; transform-style:preserve-3d; }
+  .card.open .inner, .card.done .inner { transform:rotateY(180deg); }
+  .face { position:absolute; inset:0; border-radius:12px; backface-visibility:hidden; display:flex; align-items:center; justify-content:center; text-align:center; padding:8px; box-shadow:0 2px 6px rgba(20,40,75,.18); }
+  .back { background:var(--navy); color:var(--orange); font-size:2.2rem; font-weight:bold; }
+  .back span { border:3px solid var(--orange); border-radius:50%; width:56px; height:56px; display:flex; align-items:center; justify-content:center; }
+  .front { background:#fff; transform:rotateY(180deg); flex-direction:column; font-size:.88rem; line-height:1.25; }
+  .front img { max-width:100%; max-height:72%; object-fit:contain; border-radius:6px; }
+  .front b { margin-top:6px; font-size:1rem; }
+  .card.done .front { background:#E8F5E9; outline:3px solid var(--ok); }
+  .fb { min-height:54px; margin:12px 0; padding:12px 14px; border-radius:12px; background:#fff; font-size:1.05rem; }
+  .win { display:none; background:#fff; border-radius:16px; padding:22px; text-align:center; margin-top:12px; box-shadow:0 2px 8px rgba(20,40,75,.15); }
+  .win h2 { margin-top:0; }
+  button.again { padding:14px 22px; font-size:1.1rem; border:none; border-radius:12px; background:var(--orange); color:var(--navy); font-weight:bold; cursor:pointer; }
+  footer { text-align:center; font-size:.72rem; color:#5a6b85; padding:14px; line-height:1.4; }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Geräte-Memory</h1><p>Informatik 9 · Netzwerkkomponenten</p></div>
+  <div class="stat" id="stat">Paare: 0 / 9</div>
+</header>
+<main>
+  <div class="intro">Finde die <b>9 Paare</b>: Foto eines Geräts + seine Aufgabe im Netzwerk. Tippe zwei Karten an. Lass dir Zeit – es zählt nur, dass du die Paare findest.</div>
+  <div class="grid" id="grid"></div>
+  <div class="fb" id="fb">Tippe eine Karte an.</div>
+  <div class="win" id="win">
+    <h2>Geschafft! Alle 9 Paare gefunden.</h2>
+    <p id="winText"></p>
+    <button class="again" onclick="start()">Noch einmal spielen</button>
+  </div>
+</main>
+<footer>
+  Fotos: Wikimedia Commons – ServerGuruBrisbane (CC BY-SA 4.0), Zuzu (CC BY-SA 3.0), Raimond Spekking (CC BY-SA 4.0), Ace Combat 769 (CC BY-SA 4.0),
+  heimnetzwerke.net (CC BY 4.0), Océanos y dados (CC0), Baron Maddock (CC BY 4.0), Derrick Coetzee (CC0), PJ (CC BY-SA 3.0).<br>
+  Ohne Anmeldung · es werden keine Daten gespeichert oder gesendet.
+</footer>
+<script>
+const DEV = [
+  ['ap','Accesspoint','Stellt ein WLAN bereit und verbindet kabellose Geräte mit dem kabelgebundenen Netzwerk.'],
+  ['switch','Switch','Verbindet viele Geräte per Kabel in einem Netzwerk und leitet die Daten an das richtige Gerät weiter.'],
+  ['router','Router','Verbindet verschiedene Netzwerke miteinander, z. B. das Schulnetzwerk mit dem Internet.'],
+  ['pc','PC','Ein Endgerät an einem festen Arbeitsplatz, meist per Kabel mit dem Switch verbunden.'],
+  ['lan','LAN-Kabel','Damit werden Geräte über Kabel verbunden. Der Stecker heißt RJ45.'],
+  ['phone','Smartphone','Ein tragbares (mobiles) Endgerät, meist über WLAN mit dem Netzwerk verbunden.'],
+  ['printer','Netzwerkdrucker','Mehrere Personen können ihn über das Netzwerk gemeinsam zum Drucken nutzen.'],
+  ['server','Server','Ein Computer, der für die anderen Geräte im Netzwerk Aufgaben übernimmt oder Dienste bereitstellt.'],
+  ['nas','NAS','Stellt allen Geräten im Netzwerk Speicherplatz zur Verfügung.']
+];
+let open = [], pairs = 0, tries = 0, lock = false;
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function start() {
+  open = []; pairs = 0; tries = 0; lock = false;
+  document.getElementById('win').style.display = 'none';
+  document.getElementById('fb').textContent = 'Tippe eine Karte an.';
+  document.getElementById('stat').textContent = 'Paare: 0 / 9';
+  const cards = [];
+  DEV.forEach(([k, n, d]) => {
+    cards.push({ k, html: '<img src="img/' + k + '.jpg" alt="' + n + '"><b>' + n + '</b>' });
+    cards.push({ k, html: d });
+  });
+  const g = document.getElementById('grid'); g.innerHTML = '';
+  shuffle(cards).forEach(c => {
+    const el = document.createElement('div'); el.className = 'card'; el.dataset.k = c.k;
+    el.innerHTML = '<div class="inner"><div class="face back"><span>?</span></div><div class="face front">' + c.html + '</div></div>';
+    el.onclick = () => flip(el);
+    g.appendChild(el);
+  });
+}
+function flip(el) {
+  if (lock || el.classList.contains('open') || el.classList.contains('done')) return;
+  el.classList.add('open'); open.push(el);
+  if (open.length === 2) {
+    tries++; lock = true;
+    const [a, b] = open;
+    const fb = document.getElementById('fb');
+    if (a.dataset.k === b.dataset.k) {
+      const d = DEV.find(x => x[0] === a.dataset.k);
+      setTimeout(() => {
+        a.classList.add('done'); b.classList.add('done'); open = []; lock = false; pairs++;
+        fb.innerHTML = '✔ Richtig! <b>' + d[1] + '</b>: ' + d[2];
+        document.getElementById('stat').textContent = 'Paare: ' + pairs + ' / 9';
+        if (pairs === 9) {
+          document.getElementById('winText').textContent = 'Du hast ' + tries + ' Versuche gebraucht. Kannst du jetzt jedes Gerät mit seiner Aufgabe nennen?';
+          document.getElementById('win').style.display = 'block';
+        }
+      }, 450);
+    } else {
+      fb.textContent = 'Kein Paar – merk dir, wo die Karten liegen.';
+      setTimeout(() => { a.classList.remove('open'); b.classList.remove('open'); open = []; lock = false; }, 1300);
+    }
+  }
+}
+start();
+</script>
+</body>
+</html>

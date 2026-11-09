@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fit für die Probe – Netzwerke</title>
+<style>
+  :root { --navy:#14284B; --orange:#F2A541; --light:#EAF1FA; --ok:#2E7D32; --bad:#C62828; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; font-family: Arial, Helvetica, sans-serif; background:var(--light); color:var(--navy); }
+  header { background:var(--navy); color:#fff; padding:14px 18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+  header h1 { margin:0; font-size:1.45rem; } header p { margin:2px 0 0; color:var(--orange); font-weight:bold; font-size:.95rem; }
+  .stat { background:rgba(255,255,255,.12); border-radius:10px; padding:8px 12px; font-weight:bold; }
+  main { max-width:800px; margin:0 auto; padding:16px; }
+  .topics { display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; }
+  @media (max-width:600px) { .topics { grid-template-columns:1fr; } }
+  .topic { background:#fff; border:none; border-radius:14px; padding:16px; text-align:left; font-size:1.05rem; color:var(--navy); box-shadow:0 2px 6px rgba(20,40,75,.12); cursor:pointer; }
+  .topic b { display:block; font-size:1.12rem; margin-bottom:4px; } .topic small { color:#5a6b85; }
+  .topic.all { grid-column:1 / -1; background:var(--orange); }
+  .bar { height:12px; background:#fff; border-radius:8px; overflow:hidden; margin-bottom:14px; }
+  .bar div { height:100%; width:0; background:var(--orange); transition:width .3s; }
+  .card { background:#fff; border-radius:16px; padding:22px; box-shadow:0 2px 8px rgba(20,40,75,.12); }
+  .tag { display:inline-block; background:var(--light); border-radius:8px; padding:4px 10px; font-size:.85rem; font-weight:bold; margin-bottom:10px; }
+  .q { font-size:1.25rem; line-height:1.4; margin:0 0 16px; }
+  .opts { display:grid; gap:10px; }
+  .opts button { padding:14px 16px; font-size:1.08rem; text-align:left; border:2px solid var(--navy); background:#fff; color:var(--navy); border-radius:12px; cursor:pointer; }
+  .opts button.right { background:var(--ok); color:#fff; border-color:var(--ok); }
+  .opts button.wrong { background:var(--bad); color:#fff; border-color:var(--bad); }
+  .opts button:disabled { cursor:default; }
+  .fb { margin-top:16px; padding:14px; border-radius:12px; display:none; font-size:1.05rem; line-height:1.45; }
+  .fb.ok { display:block; background:#E8F5E9; border:2px solid var(--ok); }
+  .fb.bad { display:block; background:#FFEBEE; border:2px solid var(--bad); }
+  .btn { margin-top:14px; width:100%; padding:14px; font-size:1.1rem; border:none; border-radius:12px; background:var(--orange); color:var(--navy); font-weight:bold; cursor:pointer; }
+  .btn.sec { background:var(--light); border:2px solid var(--navy); }
+  .res td { padding:6px 8px; border-bottom:1px solid #e3e9f3; } .res { width:100%; border-collapse:collapse; margin-top:10px; }
+  footer { text-align:center; font-size:.78rem; color:#5a6b85; padding:16px; }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Fit für die Probe</h1><p>Informatik 9 · Netzwerke (Stunde 1–6)</p></div>
+  <div class="stat" id="stat">Wähle ein Thema</div>
+</header>
+<main id="main"></main>
+<footer>Ohne Anmeldung · es werden keine Daten gespeichert oder gesendet.</footer>
+<script>
+const T = ['Netzwerkkomponenten', 'Unser Schulnetzwerk – Netzwerkarten', 'Computer brauchen Adressen', 'Die URL – Adresse einer Webseite', 'Der Weg der Daten im Internet', 'Anonymität im Internet'];
+// [Thema, Frage, [Antworten], Index richtig, Erklärung]
+const Q = [
+ [0,'Welches Gerät verbindet das Schulnetzwerk mit dem Internet?',['Switch','Router','Accesspoint','NAS'],1,'Der Router verbindet verschiedene Netzwerke miteinander, z. B. das Schulnetzwerk mit dem Internet.'],
+ [0,'Welches Gerät stellt das WLAN bereit?',['Accesspoint','Server','Switch','LAN-Kabel'],0,'Der Accesspoint stellt das WLAN bereit und verbindet kabellose Geräte mit dem Netzwerk.'],
+ [0,'Was macht ein Switch?',['Er speichert Daten für alle.','Er verbindet viele Geräte per Kabel und leitet die Daten an das richtige Gerät weiter.','Er stellt das WLAN bereit.','Er druckt für alle.'],1,'Der Switch verbindet Geräte per Kabel im Netzwerk und leitet die Daten gezielt weiter.'],
+ [0,'Wie heißt der Stecker eines LAN-Kabels?',['USB','HDMI','RJ45','RJ11'],2,'Das LAN-Kabel hat einen RJ45-Stecker.'],
+ [0,'Was ist ein NAS?',['ein Netzwerkspeicher für alle im Netzwerk','ein mobiles Endgerät','ein Drucker','ein Router'],0,'NAS = Netzwerkspeicher: stellt allen im Netzwerk Speicherplatz zur Verfügung.'],
+ [0,'Welches Gerät ist ein mobiles Endgerät?',['Server','Smartphone','Switch','Router'],1,'Tragbare Geräte wie Smartphone oder Tablet heißen mobile Endgeräte.'],
+ [0,'Was ist ein Server?',['das Internet selbst','ein Computer, der für andere Geräte Aufgaben übernimmt oder Dienste bereitstellt','ein Kabel','ein Funknetz'],1,'Ein Server ist ein Computer, der für andere Geräte im Netzwerk Aufgaben übernimmt.'],
+ [1,'Wie wird eine WLAN-Verbindung in einem Netzwerkplan gezeichnet?',['durchgezogene Linie','gestrichelte Linie','gar nicht','als Kreis'],1,'Durchgezogene Linie = Kabel (LAN), gestrichelte Linie = Funk (WLAN).'],
+ [1,'Die PCs im Computerraum sind per Kabel mit dem Switch verbunden. Welche Netzwerkart?',['LAN','WAN','Internet','Intranet'],0,'Ein Ort, Kabel: LAN (Local Area Network).'],
+ [1,'Eine Firma verbindet Standorte in mehreren Städten. Welche Netzwerkart?',['WLAN','LAN','WAN','Intranet'],2,'WAN = Netzwerk über große Entfernungen, verbindet viele LANs.'],
+ [1,'Was ist das größte WAN der Welt?',['das Intranet','das Internet','das Schul-WLAN','der Switch'],1,'Das Internet ist ein weltweites Netzwerk aus vielen Netzwerken – das größte WAN.'],
+ [1,'Nur Lehrkräfte können den internen Vertretungsplan öffnen. Das ist ein …',['Internet','Intranet','WAN','WLAN'],1,'Intranet = internes Netzwerk einer Schule oder Firma, nur für bestimmte Personen.'],
+ [1,'Was bedeutet WLAN?',['Wide LAN','Wireless LAN – lokales Funknetzwerk ohne Kabel','Web LAN','World LAN'],1,'WLAN = Wireless LAN: lokales Funknetzwerk ohne Kabel.'],
+ [2,'Wie viele Zahlen hat eine IP-Adresse (IPv4)?',['3','4','5','6'],1,'Eine IP-Adresse besteht aus 4 Zahlen, getrennt durch Punkte.'],
+ [2,'Welche IP-Adresse ist gültig?',['192.168.1.300','192.168.20','192.168.178.25','192.168.1.2.3'],2,'4 Zahlen, jede zwischen 0 und 255: 192.168.178.25.'],
+ [2,'Welche Adresse ist im selben Netzwerk wie 192.168.2.14?',['192.168.3.14','192.168.2.99','10.0.0.14','192.168.20.14'],1,'Die ersten drei Zahlen (Netzwerkteil) müssen gleich sein: 192.168.2.'],
+ [2,'Was zeigt der Befehl ipconfig an?',['ob ein anderes Gerät erreichbar ist','die eigene IP-Adresse und das Standardgateway','die besuchten Webseiten','den Namen des Routers'],1,'ipconfig zeigt die eigene IP-Adresse und das Standardgateway (= Router) an.'],
+ [2,'Was bedeutet beim ping die Meldung „Zeitüberschreitung“?',['Das Gerät ist erreichbar.','Das Gerät ist nicht erreichbar.','Das Internet ist zu schnell.','Die IP-Adresse ist doppelt.'],1,'„Antwort von …“ = erreichbar, „Zeitüberschreitung“ = nicht erreichbar.'],
+ [2,'Warum darf es jede IP-Adresse in einem Netzwerk nur einmal geben?',['damit die Daten das richtige Gerät erreichen','damit das WLAN schneller ist','weil sonst der Drucker ausgeht','das ist egal'],0,'Wie bei einer Hausadresse: Nur so erreichen die Daten das richtige Gerät.'],
+ [2,'Wie viele IP-Adressen hat ein Router zu Hause?',['keine','eine','zwei: im Heimnetz und öffentlich im Internet','zehn'],2,'Der Router verbindet zwei Netzwerke und hat in jedem eine Adresse.'],
+ [3,'Welcher Teil von https://www.beispiel-verein.org/termine ist die Top-Level-Domain?',['https','www','.org','/termine'],2,'Die Top-Level-Domain ist die Endung vor dem ersten /: .org.'],
+ [3,'Welcher Teil ist die Second-Level-Domain in https://www.beispiel-verein.org/termine?',['www','beispiel-verein','.org','termine'],1,'Die Second-Level-Domain ist der eigentliche Name direkt vor der Endung.'],
+ [3,'Wofür steht das S in HTTPS?',['secure – die Daten werden verschlüsselt','schnell','seriös','Server'],0,'S = secure: Daten werden verschlüsselt übertragen – wie ein verschlossener Brief.'],
+ [3,'Eine Webseite nutzt HTTPS. Was stimmt?',['Sie ist auf jeden Fall seriös.','Die Daten werden verschlüsselt übertragen.','Sie ist kostenlos.','Sie hat keine IP-Adresse.'],1,'HTTPS heißt nur „verschlüsselt“ – nicht automatisch, dass die Webseite seriös ist!'],
+ [3,'Wer schickt die Anfrage, wenn du eine Webseite öffnest?',['der Webserver','der Browser (Client)','der DNS-Server','das NAS'],1,'Der Browser (Client) schickt eine Anfrage, der Webserver schickt die Webseite als Antwort.'],
+ [3,'Was steht in lena.muster@mail-beispiel.de vor dem @?',['die Domain','der lokale Teil (Postfach)','die Top-Level-Domain','das Protokoll'],1,'Vor dem @ steht der lokale Teil (Name des Postfachs), danach die Domain des Anbieters.'],
+ [4,'Was macht ein DNS-Server?',['Er speichert alle Webseiten.','Er übersetzt Domainnamen in IP-Adressen.','Er verbindet Geräte per Kabel.','Er stellt das WLAN bereit.'],1,'Der DNS-Server übersetzt Domainnamen in IP-Adressen – wie ein Telefonbuch.'],
+ [4,'Womit wird der DNS-Server oft verglichen?',['mit einem Briefkasten','mit einem Telefonbuch / der Kontakte-App','mit einer Postkarte','mit einem Schloss'],1,'Du suchst einen Namen und bekommst die Nummer – hier die IP-Adresse.'],
+ [4,'Was passiert ZUERST, nachdem du www.msindersdorf.de eingegeben hast?',['Der Webserver schickt die Seite.','Der PC fragt über den Router den DNS-Server nach der IP-Adresse.','Der Browser zeigt die Seite an.','Der Drucker druckt.'],1,'Erst den Namen übersetzen (DNS), dann die Webseite holen.'],
+ [4,'Woher kommt die Webseite selbst?',['vom DNS-Server','vom Webserver','vom Switch','vom Accesspoint'],1,'Der DNS-Server liefert nur die IP-Adresse – die Webseite kommt vom Webserver.'],
+ [4,'Was passiert, wenn der DNS-Server ausfällt?',['Nichts.','Webseiten lassen sich über ihren Namen nicht mehr öffnen.','Das WLAN geht aus.','Der PC startet neu.'],1,'Ohne DNS bekommt der Browser zu den Namen keine IP-Adressen mehr.'],
+ [5,'Bin ich im Internet anonym?',['Ja, niemand weiß etwas.','Nein, jede Verbindung läuft über die öffentliche IP-Adresse meines Routers.','Nur mit HTTPS.','Nur am Wochenende.'],1,'Im Internet ist man nicht anonym – jede Verbindung läuft über die öffentliche IP-Adresse.'],
+ [5,'Was speichern Webserver in Logdateien?',['welche IP-Adresse wann was abgerufen hat','deinen Namen und deine Adresse','deine Passwörter','dein Foto'],0,'Webserver speichern in Logdateien, welche IP-Adresse wann was abgerufen hat.'],
+ [5,'Wer weiß, welchem Anschluss eine IP-Adresse zu welcher Zeit gehörte?',['der Webserver','der Internetanbieter (Provider)','jeder im Internet','der Switch'],1,'Nur der Provider kann die IP-Adresse einem Anschluss zuordnen.'],
+ [5,'Wer ist der Anschlussinhaber?',['die Person, auf die der Internetanschluss läuft','der Provider','der Webserver','der Router'],0,'Anschlussinhaber ist die Person, auf die der Internetanschluss läuft (oft die Eltern).'],
+ [5,'Wie lange sollen IP-Adressen nach dem geplanten Gesetz gespeichert werden?',['7 Tage','3 Monate','10 Jahre','gar nicht'],1,'Geplant (Stand Herbst 2026): Pflicht zur Speicherung für 3 Monate.'],
+ [5,'Welches Argument spricht GEGEN die Speicherung von IP-Adressen?',['Straftaten können leichter aufgeklärt werden.','Die Daten von allen werden gespeichert – Gefahr für den Datenschutz.','Opfer bekommen eher Hilfe.','Täter werden gefunden.'],1,'Contra: Daten von allen werden gespeichert – Gefahr für den Datenschutz.']
+];
+let set = [], i = 0, wrongTopics = {}, right = 0;
+function shuffle(a) { for (let k = a.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [a[k], a[j]] = [a[j], a[k]]; } return a; }
+function home() {
+  document.getElementById('stat').textContent = 'Wähle ein Thema';
+  let h = '<div class="topics"><button class="topic all" onclick="go(-1)"><b>🎯 Probe-Mix</b><small style="color:#14284B">12 gemischte Fragen aus allen Themen</small></button>';
+  T.forEach((t, k) => { const n = Q.filter(q => q[0] === k).length; h += '<button class="topic" onclick="go(' + k + ')"><b>' + (k + 1) + '. ' + t + '</b><small>' + n + ' Fragen</small></button>'; });
+  document.getElementById('main').innerHTML = h + '</div>';
+}
+function go(k) {
+  set = k < 0 ? shuffle([...Q]).slice(0, 12) : shuffle(Q.filter(q => q[0] === k));
+  i = 0; right = 0; wrongTopics = {}; show();
+}
+function show() {
+  const q = set[i];
+  document.getElementById('stat').textContent = 'Frage ' + (i + 1) + ' / ' + set.length;
+  const idx = shuffle(q[2].map((_, k) => k));
+  document.getElementById('main').innerHTML = '<div class="bar"><div style="width:' + (i / set.length * 100) + '%"></div></div><div class="card">' +
+    '<span class="tag">Hefteintrag: ' + T[q[0]] + '</span><p class="q">' + q[1] + '</p><div class="opts">' +
+    idx.map(k => '<button data-k="' + k + '">' + q[2][k] + '</button>').join('') +
+    '</div><div class="fb" id="fb"></div><button class="btn" id="next" style="display:none" onclick="next()">Weiter ▶</button></div>';
+  document.querySelectorAll('.opts button').forEach(b => b.onclick = () => pick(b));
+}
+function pick(b) {
+  const q = set[i], k = +b.dataset.k, good = k === q[3];
+  if (good) right++; else wrongTopics[q[0]] = (wrongTopics[q[0]] || 0) + 1;
+  document.querySelectorAll('.opts button').forEach(x => { x.disabled = true; if (+x.dataset.k === q[3]) x.classList.add('right'); });
+  if (!good) b.classList.add('wrong');
+  const fb = document.getElementById('fb'); fb.className = 'fb ' + (good ? 'ok' : 'bad');
+  fb.innerHTML = (good ? '✔ Richtig! ' : '✘ Leider falsch. ') + q[4];
+  document.getElementById('next').style.display = 'block';
+}
+function next() {
+  i++;
+  if (i < set.length) { show(); return; }
+  const tips = Object.keys(wrongTopics);
+  let h = '<div class="card"><p class="q" style="text-align:center">🏁 <b>' + right + ' von ' + set.length + '</b> richtig!</p>';
+  if (tips.length) {
+    h += '<p>Diese Hefteinträge solltest du noch einmal lesen:</p><table class="res">' +
+      tips.map(t => '<tr><td>📘 ' + T[t] + '</td><td>' + wrongTopics[t] + ' Fehler</td></tr>').join('') + '</table>';
+  } else { h += '<p style="text-align:center">Alles richtig – super vorbereitet! 💪</p>'; }
+  h += '<button class="btn" onclick="home()">Zur Themenauswahl</button><button class="btn sec" onclick="go(-1)">Neuer Probe-Mix</button></div>';
+  document.getElementById('main').innerHTML = h;
+  document.getElementById('stat').textContent = 'Ergebnis';
+}
+home();
+</script>
+</body>
+</html>

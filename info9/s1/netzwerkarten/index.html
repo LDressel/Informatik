@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Netzwerkarten-Sortierer – Informatik 9</title>
+<style>
+  :root { --navy:#14284B; --orange:#F2A541; --light:#EAF1FA; --ok:#2E7D32; --bad:#C62828; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; font-family: Arial, Helvetica, sans-serif; background:var(--light); color:var(--navy); }
+  header { background:var(--navy); color:#fff; padding:14px 18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+  header h1 { margin:0; font-size:1.45rem; } header p { margin:2px 0 0; color:var(--orange); font-weight:bold; font-size:.95rem; }
+  .stat { background:rgba(255,255,255,.12); border-radius:10px; padding:8px 12px; font-weight:bold; }
+  main { max-width:760px; margin:0 auto; padding:16px; }
+  .bar { height:12px; background:#fff; border-radius:8px; overflow:hidden; margin-bottom:14px; }
+  .bar div { height:100%; width:0; background:var(--orange); transition:width .3s; }
+  .card { background:#fff; border-radius:16px; padding:22px; box-shadow:0 2px 8px rgba(20,40,75,.12); }
+  .icon { font-size:3rem; text-align:center; }
+  .ex { font-size:1.3rem; text-align:center; margin:10px 0 18px; line-height:1.4; }
+  .btns { display:grid; grid-template-columns:repeat(5, 1fr); gap:8px; }
+  @media (max-width:640px) { .btns { grid-template-columns:repeat(2, 1fr); } }
+  .btns button { padding:16px 6px; font-size:1.05rem; font-weight:bold; border:2px solid var(--navy); background:var(--light); color:var(--navy); border-radius:12px; cursor:pointer; }
+  .btns button.right { background:var(--ok); color:#fff; border-color:var(--ok); }
+  .btns button.wrong { background:var(--bad); color:#fff; border-color:var(--bad); }
+  .btns button:disabled { cursor:default; }
+  .fb { margin-top:16px; padding:14px; border-radius:12px; display:none; font-size:1.05rem; line-height:1.4; }
+  .fb.ok { display:block; background:#E8F5E9; border:2px solid var(--ok); }
+  .fb.bad { display:block; background:#FFEBEE; border:2px solid var(--bad); }
+  .next { margin-top:14px; width:100%; padding:14px; font-size:1.1rem; border:none; border-radius:12px; background:var(--orange); color:var(--navy); font-weight:bold; display:none; cursor:pointer; }
+  .help { margin-top:16px; background:#fff; border-left:6px solid var(--orange); border-radius:10px; padding:12px 16px; font-size:.95rem; line-height:1.5; }
+  footer { text-align:center; font-size:.78rem; color:#5a6b85; padding:16px; }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Netzwerkarten-Sortierer</h1><p>Informatik 9 · Unser Schulnetzwerk</p></div>
+  <div class="stat" id="stat">1 / 12</div>
+</header>
+<main>
+  <div class="bar"><div id="bar"></div></div>
+  <div class="card" id="card">
+    <div class="icon" id="icon"></div>
+    <div class="ex" id="ex"></div>
+    <div class="btns" id="btns"></div>
+    <div class="fb" id="fb"></div>
+    <button class="next" id="next" onclick="next()">Weiter ▶</button>
+  </div>
+  <div class="help">
+    <b>So entscheidest du:</b> An <b>einem Ort</b> mit Kabel → LAN · an einem Ort <b>ohne Kabel</b> → WLAN ·
+    über <b>große Entfernungen</b> → WAN · <b>weltweit für alle</b> → Internet · nur für eine <b>Schule oder Firma</b> → Intranet
+  </div>
+</main>
+<footer>Ohne Anmeldung · es werden keine Daten gespeichert oder gesendet.</footer>
+<script>
+const TYPES = ['LAN', 'WLAN', 'WAN', 'Internet', 'Intranet'];
+const ITEMS = [
+  ['🖥️', 'Die 20 PCs im Computerraum sind per Kabel mit dem Switch verbunden.', 'LAN', 'An einem Ort, mit Kabel: ein lokales Netzwerk.'],
+  ['📱', 'Dein iPad ist im Klassenzimmer ohne Kabel mit dem Accesspoint verbunden.', 'WLAN', 'Ohne Kabel an einem Ort: ein Funknetzwerk.'],
+  ['🏢', 'Eine Firma verbindet ihre Standorte in München, Hamburg und Berlin.', 'WAN', 'Verbindet Netzwerke über große Entfernungen.'],
+  ['🎬', 'Du schaust ein Video, das auf einem Server in den USA liegt.', 'Internet', 'Weltweit und für alle zugänglich.'],
+  ['📋', 'Nur Lehrkräfte der Schule können den internen Vertretungsplan öffnen.', 'Intranet', 'Internes Netz – nur ein bestimmter Personenkreis hat Zugriff.'],
+  ['🏠', 'Dein Handy ist zu Hause ohne Kabel mit der FRITZ!Box verbunden.', 'WLAN', 'Zu Hause, ohne Kabel: WLAN.'],
+  ['🖨️', 'Im Büro sind drei PCs und ein Drucker per Kabel am selben Switch angeschlossen.', 'LAN', 'Ein Ort, Kabel: LAN.'],
+  ['🏦', 'Eine Bank verbindet alle ihre Filialen in ganz Deutschland.', 'WAN', 'Viele LANs an verschiedenen Orten werden verbunden.'],
+  ['✉️', 'Du schickst einer Freundin in Spanien eine E-Mail.', 'Internet', 'E-Mail läuft weltweit über das Internet.'],
+  ['🗂️', 'Mitarbeiter einer Firma rufen interne Urlaubsanträge auf, die von außen niemand sehen kann.', 'Intranet', 'Nur für die Mitarbeiter einer Firma: Intranet.'],
+  ['☕', 'Im Café surfst du mit dem Laptop über das kostenlose Funknetz.', 'WLAN', 'Funknetz an einem Ort: WLAN.'],
+  ['🌍', 'Du rufst die Webseite einer Zeitung auf.', 'Internet', 'Webseiten liegen im weltweiten Internet.']
+];
+let order = [], i = 0, right = 0;
+function shuffle(a) { for (let k = a.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [a[k], a[j]] = [a[j], a[k]]; } return a; }
+function show() {
+  const it = order[i];
+  document.getElementById('icon').textContent = it[0];
+  document.getElementById('ex').textContent = it[1];
+  document.getElementById('stat').textContent = (i + 1) + ' / ' + order.length;
+  document.getElementById('bar').style.width = (i / order.length * 100) + '%';
+  const b = document.getElementById('btns'); b.innerHTML = '';
+  TYPES.forEach(t => { const x = document.createElement('button'); x.textContent = t; x.onclick = () => answer(t, x); b.appendChild(x); });
+  document.getElementById('fb').className = 'fb';
+  document.getElementById('next').style.display = 'none';
+}
+function answer(t, btn) {
+  const it = order[i], good = t === it[2];
+  if (good) right++;
+  document.querySelectorAll('#btns button').forEach(x => { x.disabled = true; if (x.textContent === it[2]) x.classList.add('right'); });
+  if (!good) btn.classList.add('wrong');
+  const fb = document.getElementById('fb');
+  fb.className = 'fb ' + (good ? 'ok' : 'bad');
+  fb.innerHTML = (good ? '✔ Richtig! ' : '✘ Das ist <b>' + it[2] + '</b>. ') + it[3];
+  document.getElementById('next').style.display = 'block';
+}
+function next() {
+  i++;
+  if (i < order.length) { show(); return; }
+  document.getElementById('bar').style.width = '100%';
+  document.getElementById('card').innerHTML = '<div class="icon">🏆</div><div class="ex"><b>Fertig!</b><br>Du hast ' + right + ' von ' + order.length +
+    ' Beispielen richtig eingeordnet.</div><button class="next" style="display:block" onclick="location.reload()">Noch einmal (neue Reihenfolge)</button>';
+}
+order = shuffle([...ITEMS]); show();
+</script>
+</body>
+</html>

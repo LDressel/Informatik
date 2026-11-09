@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Link-Detektiv – Informatik 9</title>
+<style>
+  :root { --navy:#14284B; --orange:#F2A541; --light:#EAF1FA; --ok:#2E7D32; --bad:#C62828; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; font-family: Arial, Helvetica, sans-serif; background:var(--light); color:var(--navy); }
+  header { background:var(--navy); color:#fff; padding:14px 18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+  header h1 { margin:0; font-size:1.45rem; } header p { margin:2px 0 0; color:var(--orange); font-weight:bold; font-size:.95rem; }
+  .stat { background:rgba(255,255,255,.12); border-radius:10px; padding:8px 12px; font-weight:bold; }
+  main { max-width:820px; margin:0 auto; padding:16px; }
+  .tabs { display:flex; gap:10px; margin-bottom:14px; }
+  .tabs button { flex:1; padding:14px; font-size:1.05rem; border:2px solid var(--navy); background:#fff; color:var(--navy); border-radius:12px; font-weight:bold; cursor:pointer; }
+  .tabs button.on { background:var(--navy); color:#fff; }
+  .card { background:#fff; border-radius:16px; padding:22px; box-shadow:0 2px 8px rgba(20,40,75,.12); }
+  .q { font-size:1.15rem; margin:0 0 14px; line-height:1.4; }
+  .url { font-family:"Courier New", monospace; font-size:1.35rem; font-weight:bold; text-align:center; word-break:break-all; padding:14px; background:var(--light); border-radius:10px; }
+  .url span.seg { cursor:pointer; padding:2px 1px; border-radius:6px; }
+  .url span.seg:hover { background:#d7e3f4; }
+  .url span.seg.right { background:var(--ok); color:#fff; } .url span.seg.wrong { background:var(--bad); color:#fff; }
+  .phone { max-width:420px; margin:0 auto; background:#1f2937; border-radius:22px; padding:16px; color:#fff; }
+  .sms { background:#374151; border-radius:14px; padding:12px 14px; line-height:1.4; }
+  .sms .link { color:#93c5fd; text-decoration:underline; word-break:break-all; }
+  .answers { display:flex; gap:12px; margin-top:16px; }
+  .answers button { flex:1; padding:16px; font-size:1.15rem; font-weight:bold; border:none; border-radius:12px; color:#fff; cursor:pointer; }
+  .echt { background:var(--ok); } .fake { background:var(--bad); }
+  .answers button:disabled { opacity:.45; }
+  .fb { margin-top:16px; padding:14px; border-radius:12px; display:none; font-size:1.05rem; line-height:1.45; }
+  .fb.ok { display:block; background:#E8F5E9; border:2px solid var(--ok); }
+  .fb.bad { display:block; background:#FFEBEE; border:2px solid var(--bad); }
+  .next { margin-top:14px; width:100%; padding:14px; font-size:1.1rem; border:none; border-radius:12px; background:var(--orange); color:var(--navy); font-weight:bold; display:none; cursor:pointer; }
+  .help { margin-top:16px; background:#fff; border-left:6px solid var(--orange); border-radius:10px; padding:12px 16px; font-size:.95rem; line-height:1.5; }
+  footer { text-align:center; font-size:.78rem; color:#5a6b85; padding:16px; }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Link-Detektiv</h1><p>Informatik 9 · URL, HTTP und HTTPS</p></div>
+  <div class="stat" id="stat"></div>
+</header>
+<main>
+  <div class="tabs">
+    <button id="t1" class="on" onclick="setMode(1)">1 · URL zerlegen</button>
+    <button id="t2" onclick="setMode(2)">2 · Echt oder Fake?</button>
+  </div>
+  <div class="card" id="card"></div>
+  <div class="help" id="help"></div>
+</main>
+<footer>Alle Namen und Links sind ausgedacht (außer der Schulhomepage). Ohne Anmeldung · es werden keine Daten gespeichert.</footer>
+<script>
+// ---------- Teil 1: URL zerlegen
+const URLS = [
+  [['https://', 'P'], ['www.', 'S'], ['schule-beispiel', 'D'], ['.de', 'T'], ['/termine', 'X']],
+  [['https://', 'P'], ['de.', 'S'], ['wikipedia', 'D'], ['.org', 'T'], ['/wiki/Router', 'X']],
+  [['http://', 'P'], ['www.', 'S'], ['beispiel-shop', 'D'], ['.com', 'T'], ['/angebote', 'X']],
+  [['https://', 'P'], ['www.', 'S'], ['lernsoftware-filius', 'D'], ['.de', 'T'], ['/Herunterladen', 'X']],
+  [['https://', 'P'], ['shop.', 'S'], ['fussballverein-beispiel', 'D'], ['.de', 'T'], ['/trikots', 'X']],
+  [['https://', 'P'], ['www.', 'S'], ['musterbank', 'D'], ['.de', 'T'], ['/login', 'X']],
+  [['http://', 'P'], ['blog.', 'S'], ['reisen-beispiel', 'D'], ['.at', 'T'], ['/italien', 'X']],
+  [['https://', 'P'], ['www.', 'S'], ['msindersdorf', 'D'], ['.de', 'T'], ['/aktuelles', 'X']]
+];
+const PARTS = { P: 'das Protokoll', S: 'die Subdomain', D: 'die Second-Level-Domain', T: 'die Top-Level-Domain', X: 'den Pfad' };
+const PEXPL = { P: 'Das Protokoll steht ganz vorne und endet mit ://', S: 'Die Subdomain steht vor dem Namen (oft www.).',
+  D: 'Die Second-Level-Domain ist der eigentliche Name – direkt vor der Endung.', T: 'Die Top-Level-Domain ist die Endung vor dem ersten /.',
+  X: 'Der Pfad ist alles nach dem ersten / – die Unterseite.' };
+// ---------- Teil 2: Echt oder Fake?
+const FAKES = [
+  ['Musterbank', 'musterbank.de', 'Deine Bank: Bitte bestätigen Sie Ihr Konto:', 'https://www.musterbank.de/login', true,
+   'Vor dem ersten / steht musterbank.de – das ist die echte Domain der Bank.'],
+  ['Musterbank', 'musterbank.de', 'Ihr Konto wurde gesperrt! Jetzt entsperren:', 'https://www.musterbank.de.konto-sicher.com/login', false,
+   'Vor dem ersten / steht konto-sicher.com – „musterbank.de“ ist hier nur eine Subdomain zur Tarnung.'],
+  ['PaketExpress', 'paketexpress-beispiel.de', 'Ihr Paket konnte nicht zugestellt werden. Neuen Termin wählen:', 'http://paketexpress-zustellung.net/termin', false,
+   'Die Domain ist paketexpress-zustellung.net – nicht die echte. Dazu nur http (unverschlüsselt).'],
+  ['PaketExpress', 'paketexpress-beispiel.de', 'Sendungsverfolgung für deine Bestellung:', 'https://www.paketexpress-beispiel.de/sendung', true,
+   'Second- und Top-Level-Domain stimmen: paketexpress-beispiel.de.'],
+  ['Beispiel-Shop', 'beispiel-shop.com', 'Du hast ein iPhone gewonnen! Jetzt abholen:', 'https://beispiel-shop.gewinn-aktion.xyz', false,
+   'Die echte Domain ist gewinn-aktion.xyz. Gewinnspiele per SMS sind fast immer Betrug.'],
+  ['Beispiel-Shop', 'beispiel-shop.com', 'Deine Rechnung zur Bestellung:', 'https://www.beispiel-shop.com/konto/rechnungen', true,
+   'Vor dem ersten / steht beispiel-shop.com – passt zum Shop.'],
+  ['Musterbank', 'musterbank.de', 'Sicherheits-Update für Ihre Banking-App:', 'https://musterbank-update.de/app', false,
+   'musterbank-update.de ist eine andere Domain als musterbank.de – ein Bindestrich reicht für eine Fälschung.'],
+  ['Schule', 'msindersdorf.de', 'Neue Termine auf der Schulhomepage:', 'https://www.msindersdorf.de/', true,
+   'Das ist die echte Homepage der Mittelschule Indersdorf.']
+];
+let mode = 1, order = [], i = 0, right = 0, task = null;
+function shuffle(a) { for (let k = a.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [a[k], a[j]] = [a[j], a[k]]; } return a; }
+function setMode(m) {
+  mode = m; i = 0; right = 0;
+  document.getElementById('t1').className = m === 1 ? 'on' : ''; document.getElementById('t2').className = m === 2 ? 'on' : '';
+  document.getElementById('help').innerHTML = m === 1
+    ? '<b>Aufbau:</b> Protokoll :// · Subdomain · <b>Second-Level-Domain</b> · <b>Top-Level-Domain</b> · /Pfad'
+    : '<b>Detektiv-Regel:</b> Schau, was <b>direkt vor dem ersten /</b> steht (Second-Level-Domain + Top-Level-Domain). Alles davor kann gefälscht sein. Und: Passwörter nur bei <b>https://</b>.';
+  if (m === 1) { order = shuffle(URLS.map(u => [u, shuffle(['P', 'S', 'D', 'T', 'X'])[0]])); }
+  else { order = shuffle([...FAKES]); }
+  show();
+}
+function show() {
+  document.getElementById('stat').textContent = (i + 1) + ' / ' + order.length;
+  const c = document.getElementById('card');
+  if (mode === 1) {
+    const [u, ask] = order[i]; task = { u, ask };
+    c.innerHTML = '<p class="q">Tippe auf <b>' + PARTS[ask] + '</b>.</p><div class="url">' +
+      u.map((s, k) => '<span class="seg" data-k="' + k + '">' + s[0] + '</span>').join('') +
+      '</div><div class="fb" id="fb"></div><button class="next" id="next" onclick="next()">Weiter ▶</button>';
+    c.querySelectorAll('.seg').forEach(el => el.onclick = () => pick1(el));
+  } else {
+    const f = order[i]; task = f;
+    c.innerHTML = '<p class="q">Die echte Seite von <b>' + f[0] + '</b> ist <b>' + f[1] + '</b>. Du bekommst diese Nachricht:</p>' +
+      '<div class="phone"><div class="sms">' + f[2] + '<br><span class="link">' + f[3] + '</span></div></div>' +
+      '<div class="answers"><button class="echt" onclick="pick2(true)">✔ Echt</button><button class="fake" onclick="pick2(false)">✘ Fake</button></div>' +
+      '<div class="fb" id="fb"></div><button class="next" id="next" onclick="next()">Weiter ▶</button>';
+  }
+}
+function done(good, text) {
+  if (good) right++;
+  const fb = document.getElementById('fb'); fb.className = 'fb ' + (good ? 'ok' : 'bad');
+  fb.innerHTML = (good ? '✔ Richtig! ' : '✘ Nicht ganz. ') + text;
+  document.getElementById('next').style.display = 'block';
+}
+function pick1(el) {
+  if (document.getElementById('next').style.display === 'block') return;
+  const k = +el.dataset.k, good = task.u[k][1] === task.ask;
+  document.querySelectorAll('.seg').forEach(s => { if (task.u[+s.dataset.k][1] === task.ask) s.classList.add('right'); });
+  if (!good) el.classList.add('wrong');
+  done(good, PEXPL[task.ask]);
+}
+function pick2(a) {
+  document.querySelectorAll('.answers button').forEach(b => b.disabled = true);
+  done(a === task[4], task[5]);
+}
+function next() {
+  i++;
+  if (i < order.length) { show(); return; }
+  document.getElementById('card').innerHTML = '<p class="q" style="text-align:center;font-size:1.3rem">🕵️ <b>Fall abgeschlossen!</b><br>' + right + ' von ' + order.length +
+    ' richtig.</p><button class="next" style="display:block" onclick="setMode(' + mode + ')">Noch einmal</button>' +
+    (mode === 1 ? '<button class="next" style="display:block" onclick="setMode(2)">Weiter zu Teil 2: Echt oder Fake?</button>' : '');
+}
+setMode(1);
+</script>
+</body>
+</html>
