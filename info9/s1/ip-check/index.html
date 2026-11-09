@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IP-Check – Informatik 9</title>
+<style>
+  :root { --navy:#14284B; --orange:#F2A541; --light:#EAF1FA; --ok:#2E7D32; --bad:#C62828; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family: Arial, Helvetica, sans-serif; background:var(--light); color:var(--navy); }
+  header { background:var(--navy); color:#fff; padding:18px 20px; }
+  header h1 { margin:0; font-size:1.6rem; }
+  header p { margin:4px 0 0; color:var(--orange); font-weight:bold; }
+  main { max-width:720px; margin:0 auto; padding:18px; }
+  .tabs { display:flex; gap:10px; margin-bottom:16px; }
+  .tabs button { flex:1; padding:14px; font-size:1.05rem; border:2px solid var(--navy); background:#fff; color:var(--navy); border-radius:12px; font-weight:bold; }
+  .tabs button.on { background:var(--navy); color:#fff; }
+  .card { background:#fff; border-radius:16px; padding:22px; box-shadow:0 2px 8px rgba(20,40,75,.12); }
+  .q { font-size:1.15rem; margin:0 0 12px; }
+  .ip { font-family: "Courier New", monospace; font-size:2rem; font-weight:bold; text-align:center; margin:10px 0; letter-spacing:1px; }
+  .ip .net { color:var(--ok); } .ip .dev { color:var(--orange); }
+  .answers { display:flex; gap:12px; margin-top:14px; }
+  .answers button { flex:1; padding:18px; font-size:1.2rem; font-weight:bold; border:none; border-radius:12px; color:#fff; cursor:pointer; }
+  .yes { background:var(--ok); } .no { background:var(--bad); }
+  .answers button:disabled { opacity:.45; }
+  .fb { margin-top:16px; padding:14px; border-radius:12px; font-size:1.05rem; display:none; }
+  .fb.ok { display:block; background:#E8F5E9; border:2px solid var(--ok); }
+  .fb.bad { display:block; background:#FFEBEE; border:2px solid var(--bad); }
+  .next { margin-top:14px; width:100%; padding:14px; font-size:1.1rem; border:none; border-radius:12px; background:var(--orange); color:var(--navy); font-weight:bold; display:none; }
+  .score { display:flex; justify-content:space-between; margin:14px 2px; font-weight:bold; }
+  .stars { color:var(--orange); }
+  .help { margin-top:18px; background:#fff; border-left:6px solid var(--orange); border-radius:10px; padding:12px 16px; font-size:.95rem; }
+  footer { text-align:center; font-size:.8rem; color:#5a6b85; padding:16px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>IP-Check</h1>
+  <p>Informatik 9 · Netzwerke · Computer brauchen Adressen</p>
+</header>
+<main>
+  <div class="tabs">
+    <button id="t1" class="on" onclick="setMode(1)">Gültig oder ungültig?</button>
+    <button id="t2" onclick="setMode(2)">Gleiches Netzwerk?</button>
+  </div>
+  <div class="card">
+    <p class="q" id="q"></p>
+    <div id="ips"></div>
+    <div class="answers">
+      <button class="yes" id="bYes" onclick="answer(true)">Ja</button>
+      <button class="no" id="bNo" onclick="answer(false)">Nein</button>
+    </div>
+    <div class="fb" id="fb"></div>
+    <button class="next" id="next" onclick="newTask()">Nächste Aufgabe ▶</button>
+  </div>
+  <div class="score"><span id="sc">Richtig: 0 von 0</span><span class="stars" id="st"></span></div>
+  <div class="help">
+    <b>So prüfst du:</b> Eine IP-Adresse hat genau <b>4 Zahlen</b>, getrennt durch Punkte. Jede Zahl liegt zwischen <b>0 und 255</b>.
+    Gleiches Netzwerk: Die <b>ersten drei Zahlen</b> (Netzwerkteil) sind gleich, die <b>letzte Zahl</b> (Geräteteil) ist verschieden.
+  </div>
+</main>
+<footer>Ohne Anmeldung · es werden keine Daten gespeichert oder gesendet.</footer>
+<script>
+let mode = 1, task = null, right = 0, total = 0, streak = 0;
+const r = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const nets = [[192,168,178],[192,168,10],[192,168,1],[10,0,0],[192,168,2]];
+
+function validTask() {
+  const n = nets[r(0, nets.length - 1)];
+  const kind = r(0, 5);
+  let parts = [...n, r(2, 254)], ok = true, why = '4 Zahlen, alle zwischen 0 und 255.';
+  if (kind === 1) { parts[r(2,3)] = r(256, 320); ok = false; why = 'Eine Zahl ist größer als 255.'; }
+  if (kind === 2) { parts = parts.slice(0, 3); ok = false; why = 'Es sind nur 3 Zahlen – es müssen 4 sein.'; }
+  if (kind === 3) { parts.push(r(1, 9)); ok = false; why = 'Es sind 5 Zahlen – es müssen genau 4 sein.'; }
+  return { text: 'Ist diese IP-Adresse gültig?', ips: [parts.join('.')], ok, why, color: false };
+}
+function sameTask() {
+  const n = nets[r(0, nets.length - 1)];
+  const a = [...n, r(2, 120)];
+  const kind = r(0, 3);
+  let b = [...n, r(121, 254)], ok = true, why = 'Gleicher Netzwerkteil (' + n.join('.') + '), anderer Geräteteil.';
+  if (kind === 1) { b = [n[0], n[1], (n[2] + r(1, 3)) % 256, b[3]]; ok = false; why = 'Der Netzwerkteil ist verschieden (' + n[2] + ' und ' + b[2] + ').'; }
+  if (kind === 2) { b = [...a]; ok = false; why = 'Beide Geräte haben dieselbe Adresse – jede Adresse darf es im Netzwerk nur einmal geben!'; }
+  return { text: 'Sind diese zwei Geräte im selben Netzwerk – und können sie so funktionieren?', ips: [a.join('.'), b.join('.')], ok, why, color: true };
+}
+function fmt(ip, color) {
+  if (!color) return ip;
+  const p = ip.split('.');
+  return '<span class="net">' + p.slice(0, 3).join('.') + '</span>.<span class="dev">' + p[3] + '</span>';
+}
+function newTask() {
+  task = mode === 1 ? validTask() : sameTask();
+  document.getElementById('q').textContent = task.text;
+  document.getElementById('ips').innerHTML = task.ips.map(i => '<div class="ip">' + fmt(i, false) + '</div>').join('');
+  document.getElementById('fb').className = 'fb';
+  document.getElementById('next').style.display = 'none';
+  document.getElementById('bYes').disabled = false; document.getElementById('bNo').disabled = false;
+}
+function answer(a) {
+  total++;
+  const good = a === task.ok;
+  if (good) { right++; streak++; } else { streak = 0; }
+  const fb = document.getElementById('fb');
+  fb.className = 'fb ' + (good ? 'ok' : 'bad');
+  fb.innerHTML = (good ? '✔ Richtig! ' : '✘ Leider falsch. ') + task.why;
+  if (task.color) document.getElementById('ips').innerHTML = task.ips.map(i => '<div class="ip">' + fmt(i, true) + '</div>').join('');
+  document.getElementById('bYes').disabled = true; document.getElementById('bNo').disabled = true;
+  document.getElementById('next').style.display = 'block';
+  document.getElementById('sc').textContent = 'Richtig: ' + right + ' von ' + total;
+  document.getElementById('st').textContent = streak >= 3 ? '★'.repeat(Math.min(streak, 10)) + ' Serie!' : '';
+}
+function setMode(m) {
+  mode = m;
+  document.getElementById('t1').className = m === 1 ? 'on' : '';
+  document.getElementById('t2').className = m === 2 ? 'on' : '';
+  newTask();
+}
+newTask();
+</script>
+</body>
+</html>
